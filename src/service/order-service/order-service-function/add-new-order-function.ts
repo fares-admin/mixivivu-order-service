@@ -1,5 +1,5 @@
 import { Order, PaymentStatus } from '@/src/repository/order-repository/order-entity'
-import { CommonResponse, validate } from 'common-abstract-fares-system'
+import { CommonResponse, sendEmail, validate } from 'common-abstract-fares-system'
 import { OrderReqValidator, OrderRequest, OrderRequestError } from '../order-req'
 
 import { OrderRepository } from '@/src/repository/order-repository/order-repository'
@@ -25,6 +25,24 @@ export const addNewOrderFunction = async (
       status: 400,
     }
   }
+
+  const smtpOption = {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '465', 10),
+    secure: true,
+    auth: {
+      user: process.env.SMTP_USER || 'user',
+      pass: process.env.SMTP_PASSWORD || 'password',
+    },
+  }
+
+  const code = Math.floor(100000 + Math.random() * 900000).toString()
+  await sendEmail(smtpOption, 'fares.sys.vn@gmail.com', {
+    to: req.email,
+    subject: 'verify create payment code',
+    html: `<p>${code}</p>`,
+  })
+
   const now = new Date()
   now.setMinutes(now.getMinutes() + 5)
   const codeExpired = now
@@ -32,6 +50,7 @@ export const addNewOrderFunction = async (
     ...new Order(),
     ...req,
     codeExpired,
+    code,
     status: PaymentStatus.PENDING,
   }
 
